@@ -14,6 +14,7 @@ const { render: baseRender, createApp: baseCreateApp } = createRenderer(
 )
 
 export const render = baseRender as RootRenderFunction<TestElement>
+// todo: 创建测试用例？
 export const createApp = baseCreateApp as CreateAppFunction<TestElement>
 
 // convenience for one-off render validations

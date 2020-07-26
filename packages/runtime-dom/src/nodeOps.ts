@@ -18,7 +18,7 @@ export const nodeOps: Omit<RendererOptions<Node, Element>, 'patchProp'> = {
       parent.removeChild(child)
     }
   },
-
+  // 操作 DOM 的方法作为 params 传入
   createElement: (tag, isSVG, is): Element =>
     isSVG
       ? doc.createElementNS(svgNS, tag)

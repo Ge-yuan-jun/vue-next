@@ -21,6 +21,7 @@ declare module '@vue/reactivity' {
   }
 }
 
+// 将渲染器的一些属性或方法通过 Object.assign 整合到一起
 const rendererOptions = extend({ patchProp, forcePatchProp }, nodeOps)
 
 // lazy create the renderer - this makes core renderer logic tree-shakable
@@ -29,6 +30,10 @@ let renderer: Renderer<Element> | HydrationRenderer
 
 let enabledHydration = false
 
+/** 
+ * 见上源码英文注释
+ * 延时创建渲染器 - 在用户只需要 Vue 的响应式函数时，可以通过 tree-shaking 优化 build 之后的代码体积
+ * */ 
 function ensureRenderer() {
   return renderer || (renderer = createRenderer<Node, Element>(rendererOptions))
 }
@@ -50,7 +55,9 @@ export const hydrate = ((...args) => {
   ensureHydrationRenderer().hydrate(...args)
 }) as RootHydrateFunction
 
+// Vue.js 3.0 入口函数
 export const createApp = ((...args) => {
+  // 创建 app 对象
   const app = ensureRenderer().createApp(...args)
 
   if (__DEV__) {
@@ -58,15 +65,22 @@ export const createApp = ((...args) => {
   }
 
   const { mount } = app
+  /**
+   * 重写 mount 方法，支持 web 平台渲染
+   */
   app.mount = (containerOrSelector: Element | string): any => {
+    // 标准化容器
     const container = normalizeContainer(containerOrSelector)
     if (!container) return
     const component = app._component
+    // 如果组件没有定义 render 函数 和 template 模板属性，则去容器的 innerHTML 作为组件模板内容
     if (!isFunction(component) && !component.render && !component.template) {
       component.template = container.innerHTML
     }
     // clear content before mounting
+    // 容器内部的 innerHTML 如果存在则清空（异常情况已经保存了该段代码）
     container.innerHTML = ''
+    // 这里开始真正挂载
     const proxy = mount(container)
     container.removeAttribute('v-cloak')
     return proxy

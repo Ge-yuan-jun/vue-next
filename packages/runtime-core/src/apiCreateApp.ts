@@ -115,7 +115,9 @@ export function createAppAPI<HostElement>(
   render: RootRenderFunction,
   hydrate?: RootHydrateFunction
 ): CreateAppFunction<HostElement> {
+  // 接受两个参数：根组件对象和 prop
   return function createApp(rootComponent, rootProps = null) {
+    // 参数校验
     if (rootProps != null && !isObject(rootProps)) {
       __DEV__ && warn(`root props passed to app.mount() must be an object.`)
       rootProps = null
@@ -208,15 +210,24 @@ export function createAppAPI<HostElement>(
         context.directives[name] = directive
         return app
       },
-
+      
+      /**
+       * rootContainer 在 web 平台可以为 DOM 对象，其它平台（小程序）可以为其它的值
+       * 这段代码与运行平台无关，所以需要在 createApp 的时候进行 mounted 周期函数的调用
+       */
       mount(rootContainer: HostElement, isHydrate?: boolean): any {
         if (!isMounted) {
+          // 创建 vnode
           const vnode = createVNode(rootComponent as Component, rootProps)
           // store app context on the root VNode.
           // this will be set on the root instance on initial mount.
           vnode.appContext = context
 
           // HMR root reload
+          /**
+           * 利用渲染器渲染 vnode
+           * 如果是 dev 模式，则重新渲染一次
+           */
           if (__DEV__) {
             context.reload = () => {
               render(cloneVNode(vnode), rootContainer)

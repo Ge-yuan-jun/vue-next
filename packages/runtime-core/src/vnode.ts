@@ -294,6 +294,7 @@ export const createVNode = (__DEV__
   ? createVNodeWithArgsTransform
   : _createVNode) as typeof _createVNode
 
+// 创建 vnode 主要函数
 function _createVNode(
   type: VNodeTypes | ClassComponent | typeof NULL_DYNAMIC_COMPONENT,
   props: (Data & VNodeProps) | null = null,
@@ -319,6 +320,9 @@ function _createVNode(
   }
 
   // class & style normalization.
+  /**
+   * 初始化过程中会对 props 进行处理，逻辑主要集中标准化 class 类型还有 style 
+   */
   if (props) {
     // for reactive or proxy objects, we need to clone it to enable mutation.
     if (isProxy(props) || InternalObjectKey in props) {
@@ -339,6 +343,10 @@ function _createVNode(
   }
 
   // encode the vnode type information into a bitmap
+  /**
+   * 通过常量对 vnode 的类型做编码处理
+   * todo: 为啥要这么写？if 的判断好深
+   */
   const shapeFlag = isString(type)
     ? ShapeFlags.ELEMENT
     : __FEATURE_SUSPENSE__ && isSuspense(type)
@@ -393,6 +401,9 @@ function _createVNode(
     warn(`VNode created with invalid key (NaN). VNode type:`, vnode.type)
   }
 
+  /**
+   * 标准化子阶段，把不同数据类型的 children 转成数组或文本类型
+   */
   normalizeChildren(vnode, children)
 
   // presence of a patch flag indicates this node needs patching on updates.
