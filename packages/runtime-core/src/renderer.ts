@@ -425,6 +425,7 @@ function baseCreateRenderer(
     if (n1 && !isSameVNodeType(n1, n2)) {
       anchor = getNextHostNode(n1)
       unmount(n1, parentComponent, parentSuspense, true)
+      // n1 设为 null，保证所有函数都走 mount 逻辑
       n1 = null
     }
 
@@ -847,6 +848,7 @@ function baseCreateRenderer(
       // (i.e. at the exact same position in the source template)
       if (patchFlag & PatchFlags.FULL_PROPS) {
         // element props contain dynamic keys, full diff needed
+        // 更新 props
         patchProps(
           el,
           n2,
@@ -913,6 +915,7 @@ function baseCreateRenderer(
       }
     } else if (!optimized && dynamicChildren == null) {
       // unoptimized, full diff
+      // 更新 props
       patchProps(
         el,
         n2,
@@ -939,6 +942,7 @@ function baseCreateRenderer(
       }
     } else if (!optimized) {
       // full diff
+      // 更新子节点
       patchChildren(
         n1,
         n2,
@@ -1241,7 +1245,14 @@ function baseCreateRenderer(
 
   const updateComponent = (n1: VNode, n2: VNode, optimized: boolean) => {
     const instance = (n2.component = n1.component)!
+    // 根据新旧子组件 vnode 判断是否需要更新子组件
     if (shouldUpdateComponent(n1, n2, optimized)) {
+      /**
+       * 一个组件重新渲染可能会有两种场景，
+       * 一种是组件本身的数据变化，这种情况下 next 是 null；
+       * 另一种是父组件在更新的过程中，遇到子组件节点，先判断子组件是否需要更新，
+       * 如果需要则主动执行子组件的重新渲染方法，这种情况下 next 就是新的子组件 vnode。
+       */
       if (
         __FEATURE_SUSPENSE__ &&
         instance.asyncDep &&
@@ -1252,6 +1263,7 @@ function baseCreateRenderer(
         if (__DEV__) {
           pushWarningContext(n2)
         }
+        // 更新组件 vnode 信息
         updateComponentPreRender(instance, n2, optimized)
         if (__DEV__) {
           popWarningContext()
@@ -1259,15 +1271,19 @@ function baseCreateRenderer(
         return
       } else {
         // normal update
+        // 新的子组件的 vnode 赋值给 instance.next
         instance.next = n2
         // in case the child component is also queued, remove it to avoid
         // double updating the same child component in the same flush.
+        // 子组件可能因为数据变化被添加到更新队列里面，移除他们防止对一个子组件重复更新
         invalidateJob(instance.update)
         // instance.update is the reactive effect runner.
+        // 执行子组件的副作用渲染函数
         instance.update()
       }
     } else {
       // no update needed. just copy over properties
+      // 不需要更新，只是复制属性
       n2.component = n1.component
       n2.el = n1.el
       instance.vnode = n2
@@ -1361,9 +1377,13 @@ function baseCreateRenderer(
         instance.isMounted = true
       } else {
         // 更新组件逻辑
+        // next 表示新的组件 vnode
         // updateComponent
         // This is triggered by mutation of component's own state (next: null)
         // OR parent calling processComponent (next: VNode)
+        // 1. 更新组件 vnode 节点
+        // 2. 渲染新的子树 vnode
+        // 3. 根据新旧子树 vnode 做 patch 对比
         let { next, bu, u, parent, vnode } = instance
         let originNext = next
         let vnodeHook: VNodeHook | null | undefined
@@ -1372,6 +1392,7 @@ function baseCreateRenderer(
         }
 
         if (next) {
+          // 更新组件 vnode 节点信息
           updateComponentPreRender(instance, next, optimized)
         } else {
           next = vnode
@@ -1379,11 +1400,14 @@ function baseCreateRenderer(
         if (__DEV__) {
           startMeasure(instance, `render`)
         }
+        // 渲染新的子组件 vnode
         const nextTree = renderComponentRoot(instance)
         if (__DEV__) {
           endMeasure(instance, `render`)
         }
+        // 缓存旧的子树 vnode
         const prevTree = instance.subTree
+        // 更新新的子树 vnode
         instance.subTree = nextTree
         next.el = vnode.el
         // beforeUpdate hook
@@ -1402,12 +1426,15 @@ function baseCreateRenderer(
         if (__DEV__) {
           startMeasure(instance, `patch`)
         }
+        // 组件更新逻辑，依旧根据新旧子树 vnode 做 patch
         patch(
           prevTree,
           nextTree,
           // parent may have changed if it's in a teleport
+          // teleport 组件中的父节点可能已经发生转变，所以容器直接找旧树 DOM 元素的父节点
           hostParentNode(prevTree.el!)!,
           // anchor may have changed if it's in a fragment
+          // 挂载节点可能发生改变，直接找旧树节点的上一个 DOM 节点
           getNextHostNode(prevTree),
           instance,
           parentSuspense,
@@ -1416,6 +1443,7 @@ function baseCreateRenderer(
         if (__DEV__) {
           endMeasure(instance, `patch`)
         }
+        // 缓存更新后的 DOM 节点
         next.el = nextTree.el
         if (originNext === null) {
           // self-triggered update. In case of HOC, update parent component
@@ -1449,10 +1477,15 @@ function baseCreateRenderer(
     if (__DEV__ && instance.type.__hmrId) {
       optimized = false
     }
+    // 新组件 vnode 的 component 属性指向组件实例
     nextVNode.component = instance
+    // 旧组件 vnode 的 props 属性
     const prevProps = instance.vnode.props
+    // 组件实例的 vnode 属性指向新的组件 vnode
     instance.vnode = nextVNode
+    // 清空next 属性，为下一次重新渲染准备
     instance.next = null
+    // 更新 props 与 slots
     updateProps(instance, nextVNode.props, prevProps, optimized)
     updateSlots(instance, nextVNode.children)
   }
@@ -1505,12 +1538,15 @@ function baseCreateRenderer(
     }
 
     // children has 3 possibilities: text, array or no children.
+    // 子节点有三种情况：文本、数组、空
     if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
       // text children fast path
       if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+        // 数组 -> 文本，则删除之前的子节点
         unmountChildren(c1 as VNode[], parentComponent, parentSuspense)
       }
       if (c2 !== c1) {
+        // 文本对比不同，则替换为新文本
         hostSetElementText(container, c2 as string)
       }
     } else {
@@ -1518,6 +1554,7 @@ function baseCreateRenderer(
         // prev children was array
         if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
           // two arrays, cannot assume anything, do full diff
+          // 两个数组对比，只能全部 diff 一遍
           patchKeyedChildren(
             c1 as VNode[],
             c2 as VNodeArrayChildren,
@@ -1530,16 +1567,21 @@ function baseCreateRenderer(
           )
         } else {
           // no new children, just unmount old
+          // 数组 -> 空，直接删除之前的节点
           unmountChildren(c1 as VNode[], parentComponent, parentSuspense, true)
         }
       } else {
         // prev children was text OR null
         // new children is array OR null
+        // 之前子节点是文本或者空
+        // 新节点是数组或者空
         if (prevShapeFlag & ShapeFlags.TEXT_CHILDREN) {
+          // 如果子节点是文本，则清空
           hostSetElementText(container, '')
         }
         // mount new if array
         if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+          // 如果新的子节点是数组，则挂载新节点
           mountChildren(
             c2 as VNodeArrayChildren,
             container,

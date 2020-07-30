@@ -258,7 +258,7 @@ const isElementRoot = (vnode: VNode) => {
     vnode.type === Comment // potential v-if branch switch
   )
 }
-
+// 通过检测和对比组件 vnode 中的 props、chidren、dirs、transiton 等属性，来决定子组件是否需要更新
 export function shouldUpdateComponent(
   prevVNode: VNode,
   nextVNode: VNode,
