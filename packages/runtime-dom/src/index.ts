@@ -83,6 +83,7 @@ export const createApp = ((...args) => {
     // 这里开始真正挂载
     const proxy = mount(container)
     container.removeAttribute('v-cloak')
+    container.setAttribute('data-v-app', '')
     return proxy
   }
 
