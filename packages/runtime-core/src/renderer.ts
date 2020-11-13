@@ -1228,7 +1228,7 @@ function baseCreateRenderer(
       }
     }
   }
-
+  // processComponent 处理组件 vnode，本质上就是去判断子组件是否需要更新
   const processComponent = (
     n1: VNode | null,
     n2: VNode,
@@ -1340,7 +1340,7 @@ function baseCreateRenderer(
 
   const updateComponent = (n1: VNode, n2: VNode, optimized: boolean) => {
     const instance = (n2.component = n1.component)!
-    // 根据新旧子组件 vnode 判断是否需要更新子组件
+    // 根据新旧子组件 vnode 判断是否需要更新子组件，如果需要，递归执行子组件的副作用渲染函数来更新
     if (shouldUpdateComponent(n1, n2, optimized)) {
       /**
        * 一个组件重新渲染可能会有两种场景，
@@ -1378,7 +1378,8 @@ function baseCreateRenderer(
       }
     } else {
       // no update needed. just copy over properties
-      // 不需要更新，只是复制属性
+      // 仅更新一些 vnode 的属性，并让子组件实例保留对组件 vnode 的引用
+      // 用于子组件自身数据变化引起组件重新渲染的时候，在渲染函数内部可以拿到新的组件 vnode。
       n2.component = n1.component
       n2.el = n1.el
       instance.vnode = n2
@@ -1478,13 +1479,13 @@ function baseCreateRenderer(
         instance.isMounted = true
       } else {
         // 更新组件逻辑
-        // next 表示新的组件 vnode
         // updateComponent
         // This is triggered by mutation of component's own state (next: null)
         // OR parent calling processComponent (next: VNode)
         // 1. 更新组件 vnode 节点
         // 2. 渲染新的子树 vnode
         // 3. 根据新旧子树 vnode 做 patch 对比
+        // next 表示新的组件 vnode
         let { next, bu, u, parent, vnode } = instance
         let originNext = next
         let vnodeHook: VNodeHook | null | undefined
@@ -1513,11 +1514,14 @@ function baseCreateRenderer(
         if (__DEV__) {
           startMeasure(instance, `render`)
         }
+        // 渲染新的子树 vnode
         const nextTree = renderComponentRoot(instance)
         if (__DEV__) {
           endMeasure(instance, `render`)
         }
+        // 缓存旧的子树 vnode
         const prevTree = instance.subTree
+        // 更新子树 vnode
         instance.subTree = nextTree
 
         if (__DEV__) {
