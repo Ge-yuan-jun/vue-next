@@ -2273,7 +2273,6 @@ function baseCreateRenderer(
     return hostNextSibling((vnode.anchor || vnode.el)!)
   }
 
-<<<<<<< HEAD
   /**
    * #1156
    * When a component is HMR-enabled, we need to make sure that all static nodes
@@ -2308,8 +2307,6 @@ function baseCreateRenderer(
   }
 
   // 渲染在 mount 周期生成的 vnode 
-=======
->>>>>>> upstream/master
   const render: RootRenderFunction = (vnode, container) => {
     if (vnode == null) {
       // 销毁组件
